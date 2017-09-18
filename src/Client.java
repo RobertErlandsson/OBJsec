@@ -31,7 +31,7 @@ public class Client{
         
         /** send a packet to UDP server **/
         
-        String yourName = "Robert";
+        String yourName = "YourName";
         //prepare the message to send
         String message = "Hello from "+yourName+" sent by the host: " + InetAddress.getLocalHost(); 
         
@@ -43,7 +43,7 @@ public class Client{
         clientSocket.send(sendPacket);
         
         /** get response from UDP server **/
-        /*
+        
         //prepare a the packet structure for received packets
         int dataLength = 200; //must be large enough otherwise large message will not be fully received
         byte[] receiveData = new byte[dataLength];
@@ -59,7 +59,7 @@ public class Client{
         //we must trim the message to remove empty bytes. Observe the output without the trim function
         messageReceivedFromServer = messageReceivedFromServer.trim();
         System.out.println ("[UDP Client] The message {"+messageReceivedFromServer +"}.\n\t\tThe message is received from host: " + IPAddress + " on port" + serverPort);
-        */
+        
     }
     
 }
