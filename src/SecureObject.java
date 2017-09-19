@@ -31,13 +31,13 @@ public class SecureObject implements java.io.Serializable {
 		this.payload = payload;
 		this.name = name;
 	}
-	private void setIntegrity(String integrity) {
+	public void setIntegrity(String integrity) {
 		this.integrity = integrity;
 	}
-	private String getIntegrity() {
+	public String getIntegrity() {
 		return this.integrity;
 	}
-	private String createHMAC(String algorithm, String secretKey, String message)
+	public String createHMAC(String algorithm, String secretKey, String message)
 			throws NoSuchAlgorithmException, InvalidKeyException {
 		// Create a key instance using the bytes of our secret key argument and
 		// the proper algorithm
@@ -65,48 +65,31 @@ public class SecureObject implements java.io.Serializable {
 		return writer.toString();
 
 	}
-	// public String createHMAC(String algorithm, String secretKey, String message)
-	//		throws NoSuchAlgorithmException, InvalidKeyException {
-	//
-	//}
-	private void objectify() throws InvalidKeyException, NoSuchAlgorithmException {
-		//SecureObject o = new SecureObject(encryptString(derivedAESkey,this.header), encryptString(derivedAESkey, this.payload), encryptString(derivedAESkey,this.name));
-		SecureObject o = new SecureObject(this.header, this.payload, this.name);
-		o.setIntegrity(createHMAC("HmacSHA512", "holy", this.header + this.payload));
-		try {
-			FileOutputStream fileOut = new FileOutputStream("./" + this.name);
-			ObjectOutputStream out = new ObjectOutputStream(fileOut);
-			out.writeObject(o);
-			out.close();
-			fileOut.close();
-			System.out.printf("Serialized data is saved in ./" + this.name + "\n");
-		}catch(IOException i) {
-			i.printStackTrace();
-		}
+
+	public void sendObject(Key derivedAESkey) throws InvalidKeyException, NoSuchAlgorithmException, UnsupportedEncodingException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException {
+		SecureObject encObj = new SecureObject(encryptString(derivedAESkey,this.header), encryptString(derivedAESkey, this.payload), encryptString(derivedAESkey,this.name));
+		encObj.setIntegrity(createHMAC("HmacSHA512", "holy", this.header + this.payload));
+		ObjectOutputStream out = new ObjectOutputStream(sockSend.getOutputStream());
+		out.writeObject(encObj);
+		out.close();
 	}
-	public void deObjectify() throws InvalidKeyException, NoSuchAlgorithmException {
-		SecureObject d = null;
-		try {
-			FileInputStream fileIn = new FileInputStream("./" + this.name);
-			ObjectInputStream in = new ObjectInputStream(fileIn);
-			d = (SecureObject) in.readObject();
+	public void receiveObject() throws InvalidKeyException, NoSuchAlgorithmException {
+		SecureObject decObj = null;
+		
+			ObjectInputStream in = new ObjectInputStream(sockReceive.getInputStream());
+			decObj = (SecureObject) in.readObject();
 			in.close();
-			fileIn.close();
-		}catch(IOException i) {
-			i.printStackTrace();
-			return;
-		}catch(ClassNotFoundException c) {
-			System.out.println("SecureObject class not found");
-			c.printStackTrace();
-			return;
-		}
+			
+			decObj.header = decryptString(derivedAESkey ,this.header);
+			decObj.payload = decryptString(derivedAESkey ,this.payload);
+			decObj.name = decryptString(derivedAESkey ,this.name);
+			
+		System.out.println("Decrypted Objectify...");
+		System.out.println("Header: " + decObj.header);
+		System.out.println("Payload: " + decObj.payload);
+		System.out.println("Integrity: " + decObj.getIntegrity());
 
-		System.out.println("Deserialized Objectify...");
-		System.out.println("Header: " + d.header);
-		System.out.println("Payload: " + d.payload);
-		System.out.println("Integrity: " + d.getIntegrity());
-
-		if(d.getIntegrity().equals(createHMAC("HmacSHA512", "holy", d.header + d.payload))) {
+		if(decObj.getIntegrity().equals(createHMAC("HmacSHA512", "holy", decObj.header + decObj.payload))) {
 			System.out.println("SecureObject verified");
 		} else {
 			System.out.println("INTEGRITY UNVERIFIED");
@@ -133,9 +116,9 @@ public class SecureObject implements java.io.Serializable {
 
 	public static void main (String [] args) throws NoSuchAlgorithmException, InvalidKeyException, UnsupportedEncodingException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException {
 		SecureObject obj = new SecureObject("header","payme","claim");
-		obj.objectify();
-		obj.deObjectify();
-
+		obj.sendObject(derivedAESkey);
+		obj.receiveObject(derivedAESkey);
+		
 	}
 
 }
