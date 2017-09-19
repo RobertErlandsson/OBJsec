@@ -1,39 +1,32 @@
 import java.io.IOException;
-import java.math.BigInteger;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.net.SocketException;
-import java.net.UnknownHostException;
-import java.nio.ByteBuffer;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.security.Security;
+
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
-import java.util.Random;
 
-import javax.crypto.SecretKey;
-
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 public class Server {
 	
-    public static void main(String args[]) throws IOException {
+    public static void main(String args[]) throws Exception {
     	
     	DatagramSocket sockRecive = null;
     	DatagramSocket sockSend = null;
     	int port1 = 3333;  
     	int port2 = 4444;
+    	PublicKey publicKey = DiffieHellman.genKeys().getPublic();
+		PrivateKey privateKey = DiffieHellman.genKeys().getPrivate();
+		PublicKey publicKeyClient;
     	
     	try {
 			sockRecive = new DatagramSocket(port1);
 			sockSend = new DatagramSocket();
 			InetAddress host = InetAddress.getByName("localhost");
-			PublicKey serverPublicKey = DiffieHellman.genKeys().getPublic();
-			PrivateKey serverPrivateKey = DiffieHellman.genKeys().getPrivate();
 			while(true){
 				if(reciveHello(sockRecive)){
 					break;
@@ -41,11 +34,14 @@ public class Server {
 			}
 			sendHello(sockSend, host, port2);
 			while(true){
-				if(reciveClientKey(sockRecive)!= null){
+				if((publicKeyClient=reciveClientKey(sockRecive))!= null){
+					sendPublicKey(sockSend, publicKey, host, port2);
 					break;
 			}
-				sendPublicKey(sockSend, serverPublicKey, host, port2);	
+					
 			}
+			utility.derivedAESKey(publicKey, publicKeyClient, privateKey);
+		
     	}catch (IOException e){
     		System.err.println("IOException " + e);
     	}

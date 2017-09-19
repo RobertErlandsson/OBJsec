@@ -2,13 +2,13 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.net.SocketException;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
+
 
 
 public class Client{
@@ -18,13 +18,13 @@ public class Client{
     	DatagramSocket sockSend = null;
     	int port1 = 4444;  
     	int port2 = 3333;
-    	
-    	try {
+    	PublicKey publicKey = DiffieHellman.genKeys().getPublic();
+		PrivateKey privateKey = DiffieHellman.genKeys().getPrivate();
+		PublicKey publicKeyServer;
+		try {
 			sockRecive = new DatagramSocket(port1);
 			sockSend = new DatagramSocket();
-			InetAddress host = InetAddress.getByName("localhost");
-			PublicKey publicKey = DiffieHellman.genKeys().getPublic();
-			PrivateKey privateKey = DiffieHellman.genKeys().getPrivate();
+			InetAddress host = InetAddress.getByName("localhost");	
 			sendHello(sockSend, host, port2);
 			while(true){
 			if(reciveHello(sockRecive)){
@@ -32,16 +32,20 @@ public class Client{
 				break;
 			}
 		}
-			while(true){
-				if(reciveServerKey(sockRecive)!=null){
+			
+			while (true) {
+				if ((publicKeyServer = reciveServerKey(sockRecive)) != null) {
 					break;
 				}
 			}
+			utility.derivedAESKey(publicKey,publicKeyServer ,privateKey);
     	}catch (IOException e){
     		System.err.println("IOException " + e);
     	}
     	
     }
+    
+   
     
     public static void sendHello(DatagramSocket sockSend, InetAddress host, int port2){
     	byte[] helloServer = "Hello Server".getBytes();
