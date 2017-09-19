@@ -66,7 +66,7 @@ public class SecureObject implements java.io.Serializable {
 
 	}
 
-	public void sendObject(Key derivedAESkey) throws InvalidKeyException, NoSuchAlgorithmException, UnsupportedEncodingException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException {
+	public void sendObject(Key derivedAESkey, String name) throws InvalidKeyException, NoSuchAlgorithmException, UnsupportedEncodingException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException {
 		SecureObject encObj = new SecureObject(encryptString(derivedAESkey,this.header), encryptString(derivedAESkey, this.payload), encryptString(derivedAESkey,this.name));
 		encObj.setIntegrity(createHMAC("HmacSHA512", "holy", this.header + this.payload));
 		ObjectOutputStream out = new ObjectOutputStream(sockSend.getOutputStream());
