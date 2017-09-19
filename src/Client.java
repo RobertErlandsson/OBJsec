@@ -2,6 +2,7 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.security.Key;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
@@ -9,44 +10,39 @@ import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 
+public class Client {
+	private static Key derivedAESKey;
 
-
-public class Client{
-    
-    public static void main(String args[]) throws Exception  { 
+	public static void main(String[] args) throws Exception{
     	DatagramSocket sockRecive = null;
     	DatagramSocket sockSend = null;
     	int port1 = 4444;  
     	int port2 = 3333;
     	PublicKey publicKey = DiffieHellman.genKeys().getPublic();
 		PrivateKey privateKey = DiffieHellman.genKeys().getPrivate();
+    	sockRecive = new DatagramSocket(port1);
+		sockSend = new DatagramSocket();  
 		PublicKey publicKeyServer;
-		try {
-			sockRecive = new DatagramSocket(port1);
-			sockSend = new DatagramSocket();
+		try{
 			InetAddress host = InetAddress.getByName("localhost");	
 			sendHello(sockSend, host, port2);
 			while(true){
-			if(reciveHello(sockRecive)){
-				sendPublicKey(sockSend, publicKey, host, port2);
+					if(reciveHello(sockRecive)){
+							break;
+			}
+		}		
+    	sendPublicKey(sockSend, publicKey, host, port2);
+    	while (true) {
+			if ((publicKeyServer = reciveServerKey(sockRecive)) != null) {
 				break;
 			}
 		}
-			
-			while (true) {
-				if ((publicKeyServer = reciveServerKey(sockRecive)) != null) {
-					break;
-				}
-			}
-			utility.derivedAESKey(publicKey,publicKeyServer ,privateKey);
-    	}catch (IOException e){
-    		System.err.println("IOException " + e);
-    	}
+    
+    	derivedAESKey =	utility.derivedAESKey(publicKey, publicKeyServer ,privateKey);
+    }catch (IOException e){
     	
-    }
-    
-   
-    
+    }  
+}
     public static void sendHello(DatagramSocket sockSend, InetAddress host, int port2){
     	byte[] helloServer = "Hello Server".getBytes();
 		DatagramPacket cHello = new DatagramPacket(helloServer, helloServer.length, host, port2);
@@ -77,6 +73,17 @@ public class Client{
     	
     }
     
+    public void requestObject(DatagramSocket sockSend, InetAddress host,
+    			int port2,String name){
+    	byte[] byteRequest = name.getBytes();
+    	DatagramPacket request = new DatagramPacket(byteRequest, byteRequest.length, host, port2);
+		try {
+			sockSend.send(request);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}	
+    }
+    
     public static void sendPublicKey(DatagramSocket sockSend, PublicKey pubKey, InetAddress host, int port2){
     	byte[] publicKey = pubKey.getEncoded();  // byte
     		
@@ -88,7 +95,7 @@ public class Client{
     	
     }
    
-    public static PublicKey reciveServerKey(DatagramSocket sockRecive){
+    	public static PublicKey reciveServerKey(DatagramSocket sockRecive){
     	byte[] buffer = new byte[1024];
 		DatagramPacket incoming = new DatagramPacket(buffer, buffer.length);
 		
@@ -122,5 +129,5 @@ public class Client{
 			e.printStackTrace();
 		}
 	return null; 
-}
+		}
 }
