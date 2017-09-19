@@ -4,34 +4,40 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.StringWriter;
+import java.io.UnsupportedEncodingException;
 import java.security.InvalidKeyException;
+import java.security.Key;
 import java.security.NoSuchAlgorithmException;
-
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.Mac;
+import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 public class SecureObject implements java.io.Serializable {
+
 	private static final long serialVersionUID = 1L;
 	private String header;
 	private String payload;
 	private String integrity;
 	private String name; 
 
-	public SecureObject (String header, String payload, String name) {
+	private SecureObject (String header, String payload, String name) {
 		this.header = header;
 		this.payload = payload;
 		this.name = name;
 	}
-	public void setIntegrity(String integrity) {
+	private void setIntegrity(String integrity) {
 		this.integrity = integrity;
 	}
-	public String getIntegrity() {
+	private String getIntegrity() {
 		return this.integrity;
 	}
-	public String createHMAC(String algorithm, String secretKey, String message)
+	private String createHMAC(String algorithm, String secretKey, String message)
 			throws NoSuchAlgorithmException, InvalidKeyException {
 		// Create a key instance using the bytes of our secret key argument and
 		// the proper algorithm
@@ -63,12 +69,12 @@ public class SecureObject implements java.io.Serializable {
 	//		throws NoSuchAlgorithmException, InvalidKeyException {
 	//
 	//}
-	public void objectify() throws InvalidKeyException, NoSuchAlgorithmException {
+	private void objectify() throws InvalidKeyException, NoSuchAlgorithmException {
+		//SecureObject o = new SecureObject(encryptString(derivedAESkey,this.header), encryptString(derivedAESkey, this.payload), encryptString(derivedAESkey,this.name));
 		SecureObject o = new SecureObject(this.header, this.payload, this.name);
 		o.setIntegrity(createHMAC("HmacSHA512", "holy", this.header + this.payload));
 		try {
-			FileOutputStream fileOut =
-					new FileOutputStream("./" + this.name);
+			FileOutputStream fileOut = new FileOutputStream("./" + this.name);
 			ObjectOutputStream out = new ObjectOutputStream(fileOut);
 			out.writeObject(o);
 			out.close();
@@ -77,7 +83,6 @@ public class SecureObject implements java.io.Serializable {
 		}catch(IOException i) {
 			i.printStackTrace();
 		}
-		//KRYPTERA EFTERÅT
 	}
 	public void deObjectify() throws InvalidKeyException, NoSuchAlgorithmException {
 		SecureObject d = null;
@@ -96,25 +101,41 @@ public class SecureObject implements java.io.Serializable {
 			return;
 		}
 
-		//DEKRYPTERA FÖRE
-		
 		System.out.println("Deserialized Objectify...");
 		System.out.println("Header: " + d.header);
 		System.out.println("Payload: " + d.payload);
 		System.out.println("Integrity: " + d.getIntegrity());
-		
+
 		if(d.getIntegrity().equals(createHMAC("HmacSHA512", "holy", d.header + d.payload))) {
 			System.out.println("SecureObject verified");
 		} else {
 			System.out.println("INTEGRITY UNVERIFIED");
 		}
 	}
-	
-	public static void main (String [] args) throws NoSuchAlgorithmException, InvalidKeyException {
-		SecureObject obj = new SecureObject("header","payme","objectify");
+
+	private String encryptString(Key derivedAESKey, String str) throws NoSuchAlgorithmException, UnsupportedEncodingException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+
+		byte[] utf8 = str.getBytes("UTF-8");
+		Cipher cipher = Cipher.getInstance("AES");
+		cipher.init(Cipher.ENCRYPT_MODE, derivedAESKey);
+		byte[] encrypted = cipher.doFinal(utf8);
+		String encryptedString = new String(encrypted);
+		return encryptedString;
+	}
+
+	private String decryptString(Key derivedAESKey2, String str) throws NoSuchAlgorithmException, UnsupportedEncodingException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+
+		Cipher cipher = Cipher.getInstance("AES");
+		cipher.init(Cipher.DECRYPT_MODE, derivedAESKey2);
+		String decryptedString = new String(cipher.doFinal(str.getBytes("UTF-8")));
+		return decryptedString;
+	}
+
+	public static void main (String [] args) throws NoSuchAlgorithmException, InvalidKeyException, UnsupportedEncodingException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException {
+		SecureObject obj = new SecureObject("header","payme","claim");
 		obj.objectify();
 		obj.deObjectify();
-		
+
 	}
 
 }
