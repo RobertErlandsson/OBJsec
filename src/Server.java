@@ -1,55 +1,134 @@
-
-
 import java.io.IOException;
+import java.math.BigInteger;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.SocketException;
+import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
+import java.security.KeyFactory;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.Security;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.X509EncodedKeySpec;
+import java.util.Random;
+
+import javax.crypto.SecretKey;
+
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 public class Server {
-    public static void main(String args[]) throws IOException { 
-        
-        System.out.print("/* * * * * * * * * * * * * * * * * * * * * * * * * * */\n"
-                + "\t\tU D P   S E R V E R\n"
-                + "/* * * * * * * * * * * * * * * * * * * * * * * * * * */\n\n\n");
-        
-        //declare the UDP server socket
-        DatagramSocket serverSocket =null;
-        int port;
-        
-        port = 5555;
-        
-        //create the UDP server socket with a specific port number
-        serverSocket = new DatagramSocket(port);
-        System.out.println("[UDP Server] Datagram Socket started on port "+ port);
-        
-        
-        //prepare a the packet structure for received packets
-        int dataLength = 100; //must be large enough otherwise large message will not be fully received
-        byte[] receiveData = new byte[dataLength];
-        DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
-        
-        while(true){
-            //wait for incoming packets
-            System.out.println("[UDP Server] Waiting for incoming messages on port "+port +" ...");
-            serverSocket.receive(receivePacket);
-
-            //Extract received packet data 
-            InetAddress IPAddress = receivePacket.getAddress();
-            int clientPort = receivePacket.getPort();
-            String message = new String(receivePacket.getData());
-            //we must trim the message to remove empty bytes. Observe the output without the trim function
-            message = message.trim();
-            System.out.println ("[UDP Server] The message {"+message +"}.\n\t\tThe message is received from host: " + IPAddress + " on port" + port);
-
-            //send response back to the client host
-            byte[] sendData  = new byte[1024];
-            String responseMessage = "Thank you client, I received your message";
-            sendData = responseMessage.getBytes();
-
-            DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, clientPort);
-            serverSocket.send(sendPacket); 
-        }
-        
+	
+    public static void main(String args[]) throws IOException {
+    	
+    	DatagramSocket sockRecive = null;
+    	DatagramSocket sockSend = null;
+    	int port1 = 3333;  
+    	int port2 = 4444;
+    	
+    	try {
+			sockRecive = new DatagramSocket(port1);
+			sockSend = new DatagramSocket();
+			InetAddress host = InetAddress.getByName("localhost");
+			PublicKey serverPublicKey = DiffieHellman.genKeys().getPublic();
+			PrivateKey serverPrivateKey = DiffieHellman.genKeys().getPrivate();
+			while(true){
+				if(reciveHello(sockRecive)){
+					break;
+				}
+			}
+			sendHello(sockSend, host, port2);
+			while(true){
+				if(reciveClientKey(sockRecive)!= null){
+					break;
+			}
+				sendPublicKey(sockSend, serverPublicKey, host, port2);	
+			}
+    	}catch (IOException e){
+    		System.err.println("IOException " + e);
+    	}
     }
     
-}
+    
+   
+    public static boolean reciveHello(DatagramSocket sockRecive){
+    	byte[] buffer = new byte[1024];
+		DatagramPacket incoming = new DatagramPacket(buffer, buffer.length);
+		try {
+			sockRecive.receive(incoming);
+		} catch (IOException e) {
+			e.printStackTrace();
+			return false;
+		}
+		byte[] data = incoming.getData();
+		String string = new String(data, 0, incoming.getLength());
+		
+		if (string.equals("Hello Server")) {
+			System.out.println("SUCCESS");
+			return true;
+		} 
+		return false;
+    	
+    }
+    
+    public static void sendHello(DatagramSocket sockSend, InetAddress host, int port2){
+    	byte[] helloClient = "Hello Client".getBytes();
+		DatagramPacket cHello = new DatagramPacket(helloClient, helloClient.length, host, port2);
+		try {
+			sockSend.send(cHello);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+    }
+    
+    public static void sendPublicKey(DatagramSocket sockSend, PublicKey pubKey, InetAddress host, int runPort){
+    	byte[] publicKey = pubKey.getEncoded();  // byte
+
+		try {
+			sockSend.send(new DatagramPacket(publicKey, publicKey.length, host, runPort));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+    }
+    
+    public static PublicKey reciveClientKey(DatagramSocket sockRecive){
+		byte[] buffer = new byte[1024];
+		DatagramPacket incoming = new DatagramPacket(buffer, buffer.length);
+		
+		try {
+			sockRecive.receive(incoming);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		byte[] data = incoming.getData();
+		byte[] clientKeyByte = new byte[incoming.getLength()];
+		
+		System.arraycopy(data, 0, clientKeyByte,0, incoming.getLength());
+		
+		PublicKey publicKeyClient = Server.getPublicKeyFromByte(clientKeyByte);
+		
+		if(publicKeyClient != null){
+			return publicKeyClient;
+		}else{
+			return null;
+		}
+		
+		}
+    	
+    	public static PublicKey getPublicKeyFromByte(byte[] serverKeyByte){
+    		try {
+    			KeyFactory keyfactor = KeyFactory.getInstance("ECDSA");
+    			PublicKey publicKey = keyfactor.generatePublic(new X509EncodedKeySpec(serverKeyByte));
+    			return publicKey;		
+    		} catch (NoSuchAlgorithmException e) {
+    			e.printStackTrace();
+    		} catch (InvalidKeySpecException e) {
+    			e.printStackTrace();
+    		}
+    	return null; 
+    
+    }
+}  
+

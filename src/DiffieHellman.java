@@ -43,7 +43,7 @@ public class DiffieHellman {
             keyAgreement.doPhase(publicKey, true);
             keyAgreement.init(privateKey); 
             byte[] value = keyAgreement.generateSecret();
-            SecretKey secret = new SecretKeySpec(value, "AES");
+            SecretKey secret = new SecretKeySpec(value,0,16,"AES");
             return secret;
         } catch (Exception e) {
             return null;
