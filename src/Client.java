@@ -31,14 +31,14 @@ public class Client {
 			InetAddress host = InetAddress.getByName("localhost");	
 			sendHello(sockSend, host, port2);
 			while(true){
-				if(reciveHello(sockReceive)){
+				if(receiveHello(sockReceive)){
 					break;
 				}
 			}
 			System.out.println("Sending public key to server.");
 			sendPublicKey(sockSend, publicKeyClient, host, port2);
 			while (true) {
-				if ((publicKeyServer = reciveServerKey(sockReceive)) != null) {
+				if ((publicKeyServer = receiveServerKey(sockReceive)) != null) {
 					System.out.println("got public key from server.");
 					break;
 				}
@@ -92,7 +92,7 @@ public class Client {
 		}
 	}
 
-	public static boolean reciveHello(DatagramSocket sockRecive){
+	public static boolean receiveHello(DatagramSocket sockRecive){
 		byte[] buffer = new byte[1024];
 		DatagramPacket incoming = new DatagramPacket(buffer, buffer.length);
 		try {
@@ -134,7 +134,7 @@ public class Client {
 
 	}
 
-	public static PublicKey reciveServerKey(DatagramSocket sockRecive){
+	public static PublicKey receiveServerKey(DatagramSocket sockRecive){
 		byte[] buffer = new byte[1024];
 		DatagramPacket incoming = new DatagramPacket(buffer, buffer.length);
 
