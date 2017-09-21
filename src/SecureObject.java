@@ -1,20 +1,10 @@
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.StringWriter;
-import java.io.UnsupportedEncodingException;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
-
-import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
-import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.Mac;
-import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
@@ -33,15 +23,15 @@ public class SecureObject implements java.io.Serializable {
 		this.payload = payload;
 		this.name = name;
 	}
-	
+
 	public String getHeader() {
 		return this.header;
 	}
-	
+
 	public String getPayload() {
 		return this.payload;
 	}
-	
+
 	public String getName() {
 		return this.name;
 	}
@@ -80,37 +70,6 @@ public class SecureObject implements java.io.Serializable {
 
 	}
 
-//	public static void sendObject(Key derivedAESkey, int index) throws InvalidKeyException, NoSuchAlgorithmException, UnsupportedEncodingException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException {
-//		SecureObject asdf = objectList.get(index);
-//		SecureObject encObj = new SecureObject(encryptString(derivedAESkey,header), encryptString(derivedAESkey, payload), encryptString(derivedAESkey,name));
-//		encObj.setIntegrity(createHMAC("HmacSHA512", "holy", header + payload));
-//		ObjectOutputStream out = new ObjectOutputStream(sockSend.getOutputStream());
-//		out.writeObject(encObj);
-//		out.close();
-//	}
-//	public void receiveObject() throws InvalidKeyException, NoSuchAlgorithmException {
-//		SecureObject decObj = null;
-//		
-//			ObjectInputStream in = new ObjectInputStream(sockReceive.getInputStream());
-//			decObj = (SecureObject) in.readObject();
-//			in.close();
-//			
-//			decObj.header = decryptString(derivedAESkey ,this.header);
-//			decObj.payload = decryptString(derivedAESkey ,this.payload);
-//			decObj.name = decryptString(derivedAESkey ,this.name);
-//			
-//		System.out.println("Decrypted Objectify...");
-//		System.out.println("Header: " + decObj.header);
-//		System.out.println("Payload: " + decObj.payload);
-//		System.out.println("Integrity: " + decObj.getIntegrity());
-//
-//		if(decObj.getIntegrity().equals(createHMAC("HmacSHA512", "holy", decObj.header + decObj.payload))) {
-//			System.out.println("SecureObject verified");
-//		} else {
-//			System.out.println("INTEGRITY UNVERIFIED");
-//		}
-//	}
-
 	public static String encryptString(Key derivedAESKey, String str) throws Exception {
 
 		byte[] utf8 = str.getBytes("UTF-8");
@@ -122,19 +81,12 @@ public class SecureObject implements java.io.Serializable {
 	}
 
 	public static String decryptString(Key derivedAESKey2, String str) throws Exception {
-	
+
 		byte[] decoded = Base64.getDecoder().decode(str);
 		Cipher cipher = Cipher.getInstance("AES");
 		cipher.init(Cipher.DECRYPT_MODE, derivedAESKey2);
 		String decryptedDecoded = new String(cipher.doFinal(decoded));
 		return decryptedDecoded;
 	}
-
-//	public static void main (String [] args) throws NoSuchAlgorithmException, InvalidKeyException, UnsupportedEncodingException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException {
-//		SecureObject obj = new SecureObject("header","payme","claim");
-//		obj.sendObject(derivedAESkey);
-//		obj.receiveObject(derivedAESkey);
-//		
-//	}
 
 }
