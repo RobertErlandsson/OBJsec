@@ -6,12 +6,9 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.security.Key;
-import java.security.KeyFactory;
-import java.security.NoSuchAlgorithmException;
+import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.security.spec.InvalidKeySpecException;
-import java.security.spec.X509EncodedKeySpec;
 import java.util.ArrayList;
 
 public class Server {
@@ -23,9 +20,10 @@ public class Server {
 		DatagramSocket sockSend = null;
 		int port1 = 3335;
 		int port2 = 4446;
-		PublicKey publicKeyServer = DiffieHellman.genKeys().getPublic();
-		PrivateKey privateKey = DiffieHellman.genKeys().getPrivate();
-		PublicKey publicKeyClient;
+		KeyPair key = DiffieHellman.genKeys();
+		PublicKey publicKey = key.getPublic();
+		PrivateKey privateKey = key.getPrivate();
+		PublicKey otherPublicKey;
 		ArrayList<SecureObject> objectList = new ArrayList<SecureObject>();
 		objectList.add(new SecureObject("header", "this is the payload", "Object1"));
 		objectList.add(new SecureObject("header", "this is another payload", "Object2"));
@@ -34,36 +32,32 @@ public class Server {
 			sockSend = new DatagramSocket();
 			InetAddress host = InetAddress.getByName("localhost");
 			while (true) {
-				System.out.println("Waiting for client");
+				System.out.println("Waiting for client to connect.");
 				if (receiveHello(sockReceive)) {
 					break;
 				}
 			}
 			sendHello(sockSend, host, port2);
 			while (true) {
-				System.out.println("Waiting for clientKEY");
-				if ((publicKeyClient = receiveClientKey(sockReceive)) != null) {
-					sendPublicKey(sockSend, publicKeyServer, host, port2);
+				System.out.println("Waiting to receive client public key.");
+				if ((otherPublicKey = DiffieHellman.receiveOtherPublicKey(sockReceive)) != null) {
+					DiffieHellman.sendPublicKey(sockSend, publicKey, host, port2);
+					System.out.println("Sending public key to client.");
 					break;
 				}
 
 			}
 
-			System.out.println(publicKeyServer);
-			System.out.println(publicKeyClient);
-			System.out.println(privateKey);
-			derivedAESKey = utility.deriveAESKeyServer(publicKeyServer, publicKeyClient, privateKey);
+			derivedAESKey = DiffieHellman.deriveAESKey(publicKey, otherPublicKey, privateKey);
 			System.out.println("Data transfer ready");
-			System.out.println(derivedAESKey);
 
 			waitingForRequest(sockReceive, derivedAESKey, objectList, host, port2, sockSend);
-
+			
 		} catch (IOException e) {
 			System.err.println("IOException " + e);
 		}
 
 	}
-
 
 	public static void sendObject(Key derivedAESkey, int index, ArrayList<SecureObject> objectList,
 			InetAddress host, int port, DatagramSocket sockSend) throws Exception{
@@ -81,6 +75,7 @@ public class Server {
 		DatagramPacket packet = new DatagramPacket(sendBuf, sendBuf.length, host, port);
 		sockSend.send(packet);
 		oostream.close();
+		System.out.println("Data sent.");
 	}
 
 	private static void waitingForRequest(DatagramSocket sockReceive,Key derivedAESkey,
@@ -136,51 +131,4 @@ public class Server {
 		}
 	}
 
-	public static void sendPublicKey(DatagramSocket sockSend, PublicKey pubKey, InetAddress host, int runPort) {
-		byte[] publicKey = pubKey.getEncoded(); // byte
-
-		try {
-			sockSend.send(new DatagramPacket(publicKey, publicKey.length, host, runPort));
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-
-	public static PublicKey receiveClientKey(DatagramSocket sockReceive) {
-		byte[] buffer = new byte[1024];
-		DatagramPacket incoming = new DatagramPacket(buffer, buffer.length);
-
-		try {
-			sockReceive.receive(incoming);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		byte[] data = incoming.getData();
-		byte[] clientKeyByte = new byte[incoming.getLength()];
-
-		System.arraycopy(data, 0, clientKeyByte, 0, incoming.getLength());
-
-		PublicKey publicKeyClient = Server.getPublicKeyFromByte(clientKeyByte);
-
-		if (publicKeyClient != null) {
-			return publicKeyClient;
-		} else {
-			return null;
-		}
-
-	}
-
-	public static PublicKey getPublicKeyFromByte(byte[] serverKeyByte) {
-		try {
-			KeyFactory keyfactor = KeyFactory.getInstance("ECDSA");
-			PublicKey publicKey = keyfactor.generatePublic(new X509EncodedKeySpec(serverKeyByte));
-			return publicKey;
-		} catch (NoSuchAlgorithmException e) {
-			e.printStackTrace();
-		} catch (InvalidKeySpecException e) {
-			e.printStackTrace();
-		}
-		return null;
-
-	}
 }
