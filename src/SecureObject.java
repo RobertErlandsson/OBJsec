@@ -16,9 +16,9 @@ public class SecureObject implements java.io.Serializable {
 	private String header;
 	private String payload;
 	private String integrity;
-	private String name; 
+	private String name;
 
-	public SecureObject (String header, String payload, String name) {
+	public SecureObject(String header, String payload, String name) {
 		this.header = header;
 		this.payload = payload;
 		this.name = name;
@@ -35,33 +35,24 @@ public class SecureObject implements java.io.Serializable {
 	public String getName() {
 		return this.name;
 	}
+
 	public void setIntegrity(String integrity) {
 		this.integrity = integrity;
 	}
+
 	public String getIntegrity() {
 		return this.integrity;
 	}
+
 	public static String createHMAC(String algorithm, String secretKey, String message)
 			throws NoSuchAlgorithmException, InvalidKeyException {
-		// Create a key instance using the bytes of our secret key argument and
-		// the proper algorithm
+
 		SecretKey key = new SecretKeySpec(secretKey.getBytes(), algorithm);
-
-		// Create a Mac instance using Bouncy Castle as the provider
-		// and the specified algorithm
 		Mac mac = Mac.getInstance(algorithm, new BouncyCastleProvider());
-
-		// Initialize using the key and update with the data to
-		// generate the mac from
 		mac.init(key);
 		mac.update(message.getBytes());
-
-		// Perform the mac operation
 		byte[] encrypted = mac.doFinal();
-
 		StringWriter writer = new StringWriter();
-
-		// Convert to hexadecimal representation
 		for (byte b : encrypted) {
 			writer.append(String.format("%02x", b));
 		}

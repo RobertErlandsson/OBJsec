@@ -52,18 +52,20 @@ public class Server {
 			System.out.println("Data transfer ready");
 
 			waitingForRequest(sockReceive, derivedAESKey, objectList, host, port2, sockSend);
-			
+
 		} catch (IOException e) {
 			System.err.println("IOException " + e);
 		}
 
 	}
 
-	public static void sendObject(Key derivedAESkey, int index, ArrayList<SecureObject> objectList,
-			InetAddress host, int port, DatagramSocket sockSend) throws Exception{
-		
+	public static void sendObject(Key derivedAESkey, int index, ArrayList<SecureObject> objectList, InetAddress host,
+			int port, DatagramSocket sockSend) throws Exception {
+
 		SecureObject temp = objectList.get(index);
-		SecureObject encObj = new SecureObject(SecureObject.encryptString(derivedAESkey,temp.getHeader()), SecureObject.encryptString(derivedAESkey, temp.getPayload()), SecureObject.encryptString(derivedAESkey,temp.getName()));
+		SecureObject encObj = new SecureObject(SecureObject.encryptString(derivedAESkey, temp.getHeader()),
+				SecureObject.encryptString(derivedAESkey, temp.getPayload()),
+				SecureObject.encryptString(derivedAESkey, temp.getName()));
 		encObj.setIntegrity(SecureObject.createHMAC("HmacSHA512", "holy", temp.getHeader() + temp.getPayload()));
 
 		ByteArrayOutputStream byteStream = new ByteArrayOutputStream(5000);
@@ -78,9 +80,9 @@ public class Server {
 		System.out.println("Data sent.");
 	}
 
-	private static void waitingForRequest(DatagramSocket sockReceive,Key derivedAESkey,
-			ArrayList<SecureObject> objectList,InetAddress host, int port, DatagramSocket sockSend) throws Exception {
-		while(true){
+	private static void waitingForRequest(DatagramSocket sockReceive, Key derivedAESkey,
+			ArrayList<SecureObject> objectList, InetAddress host, int port, DatagramSocket sockSend) throws Exception {
+		while (true) {
 			byte[] buffer = new byte[1024];
 			DatagramPacket incoming = new DatagramPacket(buffer, buffer.length);
 			try {
@@ -90,13 +92,12 @@ public class Server {
 			}
 			byte[] data = incoming.getData();
 			String string = new String(data, 0, incoming.getLength());
-			if(string.equals("quit")){
+			if (string.equals("quit")) {
 				System.out.println("Server shuting down.");
 				break;
-			}else{ 
+			} else {
 				sendObject(derivedAESKey, 0, objectList, host, port, sockSend);
 			}
-
 
 		}
 	}

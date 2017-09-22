@@ -10,27 +10,26 @@ import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 
-
 public class Client {
 	private static Key derivedAESKey;
 
-	public static void main(String[] args) throws Exception{
+	public static void main(String[] args) throws Exception {
 		DatagramSocket sockReceive = null;
 		DatagramSocket sockSend = null;
-		int port1 = 4446;  
+		int port1 = 4446;
 		int port2 = 3335;
 		KeyPair key = DiffieHellman.genKeys();
 		PublicKey publicKey = key.getPublic();
 		PrivateKey privateKey = key.getPrivate();
 		sockReceive = new DatagramSocket(port1);
-		sockSend = new DatagramSocket();  
+		sockSend = new DatagramSocket();
 		PublicKey otherPublicKey;
 
-		try{
-			InetAddress host = InetAddress.getByName("localhost");	
+		try {
+			InetAddress host = InetAddress.getByName("localhost");
 			sendHello(sockSend, host, port2);
-			while(true){
-				if(receiveHello(sockReceive)){
+			while (true) {
+				if (receiveHello(sockReceive)) {
 					break;
 				}
 			}
@@ -42,17 +41,18 @@ public class Client {
 					break;
 				}
 			}
-			derivedAESKey =	DiffieHellman.deriveAESKey(publicKey, otherPublicKey ,privateKey);
+			derivedAESKey = DiffieHellman.deriveAESKey(publicKey, otherPublicKey, privateKey);
 			System.out.println("Data transfer ready");
 
 			requestObject(sockSend, host, port2, "hej");
 			receiveObject(derivedAESKey, sockReceive);
-			
-		}catch (IOException e){
+
+		} catch (IOException e) {
 			System.err.println("IOException " + e);
-		}		
+		}
 	}
-	public static void receiveObject(Key derivedAESkey, DatagramSocket sockReceive) throws Exception{
+
+	public static void receiveObject(Key derivedAESkey, DatagramSocket sockReceive) throws Exception {
 		byte[] recvBuf = new byte[5000];
 		DatagramPacket packet = new DatagramPacket(recvBuf, recvBuf.length);
 		sockReceive.receive(packet);
@@ -61,23 +61,23 @@ public class Client {
 		SecureObject decObj = (SecureObject) is.readObject();
 		is.close();
 
-		String decHeader = SecureObject.decryptString(derivedAESkey ,decObj.getHeader());
-		String decPayload = SecureObject.decryptString(derivedAESkey ,decObj.getPayload());
+		String decHeader = SecureObject.decryptString(derivedAESkey, decObj.getHeader());
+		String decPayload = SecureObject.decryptString(derivedAESkey, decObj.getPayload());
 
 		System.out.println("Decrypted Objectify...");
 		System.out.println("header: " + decHeader);
 		System.out.println("payload: " + decPayload);
-		System.out.println("name: " + SecureObject.decryptString(derivedAESkey ,decObj.getName()));
+		System.out.println("name: " + SecureObject.decryptString(derivedAESkey, decObj.getName()));
 		System.out.println("Integrity: " + decObj.getIntegrity());
 
-		if(decObj.getIntegrity().equals(SecureObject.createHMAC("HmacSHA512", "holy", decHeader + decPayload))) {
+		if (decObj.getIntegrity().equals(SecureObject.createHMAC("HmacSHA512", "holy", decHeader + decPayload))) {
 			System.out.println("SecureObject verified");
 		} else {
 			System.out.println("INTEGRITY UNVERIFIED");
 		}
 	}
 
-	public static void sendHello(DatagramSocket sockSend, InetAddress host, int port2){
+	public static void sendHello(DatagramSocket sockSend, InetAddress host, int port2) {
 		byte[] helloServer = "Hello Server".getBytes();
 		DatagramPacket cHello = new DatagramPacket(helloServer, helloServer.length, host, port2);
 		try {
@@ -87,7 +87,7 @@ public class Client {
 		}
 	}
 
-	public static boolean receiveHello(DatagramSocket sockReceive){
+	public static boolean receiveHello(DatagramSocket sockReceive) {
 		byte[] buffer = new byte[1024];
 		DatagramPacket incoming = new DatagramPacket(buffer, buffer.length);
 		try {
@@ -102,20 +102,19 @@ public class Client {
 		if (string.equals("Hello Client")) {
 			System.out.println("SUCCESS");
 			return true;
-		} 
+		}
 		return false;
 
 	}
 
-	public static void requestObject(DatagramSocket sockSend, InetAddress host,
-			int port2,String name){
+	public static void requestObject(DatagramSocket sockSend, InetAddress host, int port2, String name) {
 		byte[] byteRequest = name.getBytes();
 		DatagramPacket request = new DatagramPacket(byteRequest, byteRequest.length, host, port2);
 		try {
 			sockSend.send(request);
 		} catch (IOException e) {
 			e.printStackTrace();
-		}	
+		}
 	}
 
 }

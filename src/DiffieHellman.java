@@ -32,7 +32,7 @@ public class DiffieHellman {
 			Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
 			ECParameterSpec ecSpec = ECNamedCurveTable.getParameterSpec("prime192v1");
 			KeyPairGenerator g;
-			g = KeyPairGenerator.getInstance("ECDSA","BC");
+			g = KeyPairGenerator.getInstance("ECDSA", "BC");
 			g.initialize(ecSpec);
 			KeyPair pair = g.generateKeyPair();
 			return pair;
@@ -46,13 +46,13 @@ public class DiffieHellman {
 		try {
 			KeyFactory keyfactor = KeyFactory.getInstance("ECDSA");
 			PublicKey otherPublicKey = keyfactor.generatePublic(new X509EncodedKeySpec(serverKeyByte));
-			return otherPublicKey;		
+			return otherPublicKey;
 		} catch (NoSuchAlgorithmException e) {
 			e.printStackTrace();
 		} catch (InvalidKeySpecException e) {
 			e.printStackTrace();
 		}
-		return null; 
+		return null;
 	}
 
 	public static void sendPublicKey(DatagramSocket sockSend, PublicKey pubKey, InetAddress host, int runPort) {
@@ -64,7 +64,7 @@ public class DiffieHellman {
 			e.printStackTrace();
 		}
 	}
-	
+
 	public static PublicKey receiveOtherPublicKey(DatagramSocket sockReceive) {
 		byte[] buffer = new byte[1024];
 		DatagramPacket incoming = new DatagramPacket(buffer, buffer.length);
@@ -87,11 +87,11 @@ public class DiffieHellman {
 			return null;
 		}
 	}
-	
+
 	public static Key deriveAESKey(PublicKey publicKey, PublicKey otherPublicKey, PrivateKey privateKey)
 			throws NoSuchAlgorithmException, UnsupportedEncodingException {
 		byte[] value;
-		
+
 		try {
 			KeyAgreement keyAgreement = KeyAgreement.getInstance("ECDH");
 			keyAgreement.init(privateKey);
@@ -104,12 +104,13 @@ public class DiffieHellman {
 		MessageDigest hash = MessageDigest.getInstance("SHA-256");
 		hash.update(value);
 		byte[] derivedKey = hash.digest();
-		List<ByteBuffer> keys = Arrays.asList(ByteBuffer.wrap(publicKey.getEncoded()), ByteBuffer.wrap(otherPublicKey.getEncoded()));
+		List<ByteBuffer> keys = Arrays.asList(ByteBuffer.wrap(publicKey.getEncoded()),
+				ByteBuffer.wrap(otherPublicKey.getEncoded()));
 		Collections.sort(keys);
 		hash.update(keys.get(0));
 		hash.update(keys.get(1));
 		derivedKey = Arrays.copyOf(derivedKey, 16);
-		Key aesDerivedKey= new SecretKeySpec(derivedKey, "AES");
+		Key aesDerivedKey = new SecretKeySpec(derivedKey, "AES");
 		return aesDerivedKey;
 	}
 
