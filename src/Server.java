@@ -25,8 +25,9 @@ public class Server {
 		PrivateKey privateKey = key.getPrivate();
 		PublicKey otherPublicKey;
 		ArrayList<SecureObject> objectList = new ArrayList<SecureObject>();
-		objectList.add(new SecureObject("header", "this is the payload", "Object1"));
-		objectList.add(new SecureObject("header", "this is another payload", "Object2"));
+		objectList.add(new SecureObject("This header is supposed to have information about ciphers etc",
+				"this is the payload", "Object1"));
+		objectList.add(new SecureObject("headin out", "this is another payload", "Object2"));
 		try {
 			sockReceive = new DatagramSocket(port1);
 			sockSend = new DatagramSocket();
@@ -50,13 +51,50 @@ public class Server {
 
 			derivedAESKey = DiffieHellman.deriveAESKey(publicKey, otherPublicKey, privateKey);
 			System.out.println("Data transfer ready");
+			waitingForRequest(sockReceive, derivedAESKey, objectList, host, port2, sockSend);
+			
+			//generate new keys
+			key = DiffieHellman.genKeys();
+			publicKey = key.getPublic();
+			privateKey = key.getPrivate();
+			while (true) {
+				System.out.println("Waiting to receive client public key.");
+				if ((otherPublicKey = DiffieHellman.receiveOtherPublicKey(sockReceive)) != null) {
+					DiffieHellman.sendPublicKey(sockSend, publicKey, host, port2);
+					System.out.println("Sending public key to client.");
+					break;
+				}
 
+			}
+			derivedAESKey = DiffieHellman.deriveAESKey(publicKey, otherPublicKey, privateKey);
+			
 			waitingForRequest(sockReceive, derivedAESKey, objectList, host, port2, sockSend);
 
 		} catch (IOException e) {
 			System.err.println("IOException " + e);
 		}
 
+	}
+
+	private static void waitingForRequest(DatagramSocket sockReceive, Key derivedAESkey,
+			ArrayList<SecureObject> objectList, InetAddress host, int port, DatagramSocket sockSend) throws Exception {
+		while (true) {
+			byte[] buffer = new byte[1024];
+			DatagramPacket incoming = new DatagramPacket(buffer, buffer.length);
+			try {
+				sockReceive.receive(incoming);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			byte[] data = incoming.getData();
+			String string = new String(data, 0, incoming.getLength());
+			if (string.equals("quit")) {
+				System.out.println("Server shuting down.");
+			} else {
+				sendObject(derivedAESKey, Integer.parseInt(string), objectList, host, port, sockSend);
+			}
+			break;
+		}
 	}
 
 	public static void sendObject(Key derivedAESkey, int index, ArrayList<SecureObject> objectList, InetAddress host,
@@ -80,25 +118,13 @@ public class Server {
 		System.out.println("Data sent.");
 	}
 
-	private static void waitingForRequest(DatagramSocket sockReceive, Key derivedAESkey,
-			ArrayList<SecureObject> objectList, InetAddress host, int port, DatagramSocket sockSend) throws Exception {
-		while (true) {
-			byte[] buffer = new byte[1024];
-			DatagramPacket incoming = new DatagramPacket(buffer, buffer.length);
-			try {
-				sockReceive.receive(incoming);
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-			byte[] data = incoming.getData();
-			String string = new String(data, 0, incoming.getLength());
-			if (string.equals("quit")) {
-				System.out.println("Server shuting down.");
-				break;
-			} else {
-				sendObject(derivedAESKey, 0, objectList, host, port, sockSend);
-			}
-
+	public static void sendHello(DatagramSocket sockSend, InetAddress host, int port2) {
+		byte[] helloClient = "Hello Client".getBytes();
+		DatagramPacket cHello = new DatagramPacket(helloClient, helloClient.length, host, port2);
+		try {
+			sockSend.send(cHello);
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 	}
 
@@ -121,15 +147,4 @@ public class Server {
 		return false;
 
 	}
-
-	public static void sendHello(DatagramSocket sockSend, InetAddress host, int port2) {
-		byte[] helloClient = "Hello Client".getBytes();
-		DatagramPacket cHello = new DatagramPacket(helloClient, helloClient.length, host, port2);
-		try {
-			sockSend.send(cHello);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-
 }

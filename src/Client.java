@@ -44,11 +44,39 @@ public class Client {
 			derivedAESKey = DiffieHellman.deriveAESKey(publicKey, otherPublicKey, privateKey);
 			System.out.println("Data transfer ready");
 
-			requestObject(sockSend, host, port2, "hej");
+			requestObject(sockSend, host, port2, "0");
 			receiveObject(derivedAESKey, sockReceive);
+			
+			// request object2
+			key = DiffieHellman.genKeys();
+			publicKey = key.getPublic();
+			privateKey = key.getPrivate();
+			DiffieHellman.sendPublicKey(sockSend, publicKey, host, port2);
+			while (true) {
+				if ((otherPublicKey = DiffieHellman.receiveOtherPublicKey(sockReceive)) != null) {
+					System.out.println("Received public key from server.");
+					break;
+				}
+			}
+			derivedAESKey = DiffieHellman.deriveAESKey(publicKey, otherPublicKey, privateKey);
+			requestObject(sockSend, host, port2, "1");
+			receiveObject(derivedAESKey, sockReceive);
+			
+			//close connection
+			requestObject(sockSend, host, port2, "quit");
 
 		} catch (IOException e) {
 			System.err.println("IOException " + e);
+		}
+	}
+
+	public static void requestObject(DatagramSocket sockSend, InetAddress host, int port2, String name) {
+		byte[] byteRequest = name.getBytes();
+		DatagramPacket request = new DatagramPacket(byteRequest, byteRequest.length, host, port2);
+		try {
+			sockSend.send(request);
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 	}
 
@@ -105,16 +133,6 @@ public class Client {
 		}
 		return false;
 
-	}
-
-	public static void requestObject(DatagramSocket sockSend, InetAddress host, int port2, String name) {
-		byte[] byteRequest = name.getBytes();
-		DatagramPacket request = new DatagramPacket(byteRequest, byteRequest.length, host, port2);
-		try {
-			sockSend.send(request);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
 	}
 
 }
